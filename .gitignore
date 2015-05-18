@@ -1,0 +1,9 @@
+build
+out
+Release
+Debug
+node_modules
+.deps
+.DS_Store
+.swp
+*~
