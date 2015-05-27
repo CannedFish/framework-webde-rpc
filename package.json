@@ -9,7 +9,7 @@
   "main": "lib/ipc.js",
   "dependencies": {
     "dbus": ">= 0.2.10",
-    "commdaemon": "../service/commdaemon"
+    "commdaemon": ">= 0.1.0"
   },
   "devDependencies": {},
   "optionalDependencies": {},
