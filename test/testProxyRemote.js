@@ -11,7 +11,7 @@ function Proxy(ip) {
   }
 
   // TODO: replace $cdProxy to the real path
-  this.cd = require('../../service/commdaemon/interface/commdaemonProxy').getProxy();
+  this.cd = require('../node_modules/commdaemon/interface/commdaemonProxy').getProxy();
 }
 
 Proxy.prototype.setVal = function(String, callback) {
