@@ -6,10 +6,11 @@ if(process.argv.length < 3)
 var fs = require('fs'),
     path = require('path'),
     exec = require('child_process').exec,
-    json4line = require('../../sdk/utils/json4line'),
-    flowctl = require('../../sdk/utils/flowctl'),
-    config = require('../../config'),
-    svrPath = path.resolve('../../testAPI/testRPC/SvrList');
+    utils = require('utils'),
+    json4line = utils.Json4line(),
+    flowctl = utils.Flowctl(),
+    config = require('systemconfig')/* , */
+    /* svrPath = path.resolve('../../../testAPI/testRPC/SvrList') */;
 
 function doInstall(pkg) {
   fs.exists(pkg, function(exist) {
@@ -91,11 +92,11 @@ function doInstall(pkg) {
         return console.log(err_);
       var pkgEntrance = path.resolve(pkg),
           content = pkgName + ' ' + pkgEntrance + '\n';
-      fs.appendFile(svrPath, content, function(err) {
-        if(err)
-          return console.log(err);
+      // fs.appendFile(svrPath, content, function(err) {
+        // if(err)
+          // return console.log(err);
         console.log(pkgName, 'installed OK');
-      });
+      // });
     });
   });
 }
