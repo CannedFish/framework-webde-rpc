@@ -6,7 +6,8 @@ if(process.argv.length < 3)
 var fs = require('fs'),
     util = require('util'),
     events = require('events'),
-    json4line = require('../../sdk/utils/json4line');
+    utils = require('utils'),
+    json4line = utils.Json4line();
 
 json4line.readJSONFile(process.argv[2], function(err, interfaces) {
   if(err) return console.log('Interface File error:', err);
@@ -48,8 +49,7 @@ var NOTICE = "// This file is auto generated based on user-defined interface.\n"
             + "// Please make sure that you have checked all TODOs in this file.\n"
             + "// TODO: please replace types with peramters' name you wanted of any functions\n"
             + "// TODO: please replace $ipcType with one of dbus, binder, websocket and socket\n";
-var GETIPC = "  // TODO: please replace $IPC with the real path of webde-rpc module in your project\n"
-            + "  this._ipc = require('$IPC').getIPC(initObj);\n";
+var GETIPC = "  // this._ipc = require('webde-rpc').getIPC(initObj);\n";
 
 function buildStub(filename, initObj, ifaces, remote) {
   var outputFile = [],
