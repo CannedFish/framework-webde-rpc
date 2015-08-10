@@ -6,6 +6,7 @@ if(process.argv.length < 3)
 var fs = require('fs'),
     util = require('util'),
     events = require('events'),
+    os = require('os'),
     utils = require('utils'),
     json4line = utils.Json4line();
 
@@ -31,7 +32,16 @@ function builder(ifaces) {
       };
   if(process.argv[3] == 'dbus') {
     initObj.type = 'dbus';
-  } else if(process.argv[3] == 'binder') {}
+  } else if(process.argv[3] == 'binder') {
+    initObj.type = 'binder';
+  } else {
+    var sys = os.type();
+    if(sys == 'Linux') {
+      initObj.type = 'dbus';
+    } else if(sys == 'Android') {
+      initObj.type = 'binder';
+    }
+  }
 
   buildProxy(ifaces.service + 'Proxy.js', initObj, ifaces.interfaces, false);
   buildStub(ifaces.service + 'Stub.js', initObj, ifaces.interfaces,
@@ -210,6 +220,7 @@ function buildProxy(filename, initObj, ifaces, remote) {
         + "  };\n"
         + "  this._cd.send(this.ip, argvs);\n")
         : "  this._ipc.on(event, handler);\n")
+        + "  return this;\n"
         + "};\n\n"
         + "/**\n"
         + " * @description\n"
@@ -235,6 +246,7 @@ function buildProxy(filename, initObj, ifaces, remote) {
         + "  };\n"
         + "  this._cd.send(this.ip, argvs);\n")
         : "  this._ipc.removeListener(event, handler);\n")
+        + "  return this;\n"
         + "};\n");
     // interface to get proxy object
     outputFile.push("var proxy = null;\n"
@@ -253,5 +265,9 @@ function buildProxy(filename, initObj, ifaces, remote) {
   }
 }
 
+// TODO: build an index.js to initialize some events listened on parent's process(a.k.a svcmgr)
+//
+
 // TODO: build a HTML document to describ interfaces
 //
+
