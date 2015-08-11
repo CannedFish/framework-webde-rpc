@@ -316,7 +316,7 @@ function buildIndex(initObj) {
     outputFile.push("// Main function of this service\n"
         + "function onStart() {\n"
         + "  // TODO: your code to start up this service\n"
-        + "  //   ... ...\n\n"
+        + "  //   ... ...\n"
         + "}\n");
     outputFile.push("// Do not modify codes below!!\n"
         + "function parser(msg) {\n"
