@@ -1,19 +1,55 @@
+#!/usr/bin/env node
 // generate Proxy and Stub automatically base on user defined interface
 //
 if(process.argv.length < 3)
-  return console.log('Usage: node generator.js ${Your_Interface_File} [ipc type]');
+  return console.log('Usage: generator.js -i ${Your_Interface_File} -t [ipc type] '
+      + '-o $[proxy+stub+index](choose one or more separated by "+", will generate all by default)\n'
+      + 'e.g. generator.js -i testIface -o proxy+index');
 
 var fs = require('fs'),
     util = require('util'),
     events = require('events'),
     os = require('os'),
     utils = require('utils'),
-    json4line = utils.Json4line();
+    json4line = utils.Json4line(),
+    param = {
+      out: {
+        proxy: true,
+        stub: true,
+        index: true
+      }
+    };
 
-json4line.readJSONFile(process.argv[2], function(err, interfaces) {
-  if(err) return console.log('Interface File error:', err);
-  builder(interfaces);
-});
+for(var i = 2; i < process.argv.length; ++i) {
+  var prop = process.argv[i];
+  switch(prop) {
+    case '-i':
+      param.file = process.argv[++i];
+      break;
+    case '-t':
+      param.ipcType = process.argv[++i];
+      break;
+    case '-o':
+      var out = process.argv[++i].split('+');
+      param.out = {};
+      for(var j = 0; j < out.length; ++j) {
+        param.out[out[j]] = true;
+      }
+      break;
+    default:
+      console.log('Unknown parameter:', prop);
+      break;
+  }
+}
+
+if(param.file) {
+  json4line.readJSONFile(param.file, function(err, interfaces) {
+    if(err) return console.log('Interface File error:', err);
+    builder(interfaces);
+  });
+} else {
+  throw 'Not input interface file';
+}
 
 function builder(ifaces) {
   if(typeof ifaces.service === 'undefined')
@@ -30,9 +66,10 @@ function builder(ifaces) {
         name: addr/*  + '.' + ifaces.service */,
         type: '$ipcType'
       };
-  if(process.argv[3] == 'dbus') {
+
+  if(param.ipcType == 'dbus') {
     initObj.type = 'dbus';
-  } else if(process.argv[3] == 'binder') {
+  } else if(param.ipcType == 'binder') {
     initObj.type = 'binder';
   } else {
     var sys = os.type();
@@ -43,14 +80,20 @@ function builder(ifaces) {
     }
   }
 
-  buildProxy(ifaces.service + 'Proxy.js', initObj, ifaces.interfaces, false);
-  buildStub(ifaces.service + 'Stub.js', initObj, ifaces.interfaces,
-      (remote == 'true' ? true : false));
-  if(remote == 'true') {
-    // initObj.name = 'nodejs.webde.service.commdeamon';
+  if(param.out.proxy) {
+    buildProxy(ifaces.service + 'Proxy.js', initObj, ifaces.interfaces, false);
+  }
+  if(param.out.stub) {
+    buildStub(ifaces.service + 'Stub.js', initObj, ifaces.interfaces,
+        (remote == 'true' ? true : false));
+  }
+  if(remote == 'true' && param.out.proxy) {
     delete initObj.interface;
     delete initObj.serviceObj;
     buildProxy(ifaces.service + 'ProxyRemote.js', initObj, ifaces.interfaces, true)
+  }
+  if(param.out.index) {
+    buildIndex(initObj);
   }
 }
 exports.builder = builder;
@@ -265,8 +308,45 @@ function buildProxy(filename, initObj, ifaces, remote) {
   }
 }
 
-// TODO: build an index.js to initialize some events listened on parent's process(a.k.a svcmgr)
+// build an index.js to initialize some events listened on parent's process(a.k.a svcmgr)
 //
+function buildIndex(initObj) {
+  try {
+    var outputFile = [];
+    outputFile.push("// Main function of this service\n"
+        + "function onStart() {\n"
+        + "  // TODO: your code to start up this service\n"
+        + "  //   ... ...\n\n"
+        + "}\n");
+    outputFile.push("// Do not modify codes below!!\n"
+        + "function parser(msg) {\n"
+        + "}\n");
+    outputFile.push("if(process.argv[2] == 'start') {\n"
+        + "  onStart();\n"
+        + "  // initialize some event handler\n"
+        + "  process.on('message', function(msg) {\n"
+        + "    parser(msg);\n"
+        + "  });\n"
+        + "} else {\n"
+        + "  var svcmgr = require('webde-rpc').defaultSvcMgr();\n"
+        + "  svcmgr.addService(" + initObj.service + ", {\n"
+        + "    path: __dirname,\n"
+        + "    args: ['start']\n"
+        + "  }, function(ret) {\n"
+        + "    if(ret.err) {\n"
+        + "      console.log(ret.err);\n"
+        + "      process.exit(1);\n"
+        + "    }\n"
+        + "    process.exit(0);\n"
+        + "  });\n"
+        + "}\n");
+    fs.writeFile('../index.js', outputFile.join('\n'), function(err) {
+      if(err) return err;
+    });
+  } catch(e) {
+    return console.log(e);
+  }
+}
 
 // TODO: build a HTML document to describ interfaces
 //
