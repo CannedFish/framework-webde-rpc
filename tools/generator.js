@@ -48,7 +48,7 @@ if(param.file) {
     builder(interfaces);
   });
 } else {
-  throw 'Not input interface file';
+  throw 'No input interface file';
 }
 
 function builder(ifaces) {
@@ -81,19 +81,19 @@ function builder(ifaces) {
   }
 
   if(param.out.proxy) {
-    buildProxy(ifaces.service + 'Proxy.js', initObj, ifaces.interfaces, false);
+    buildProxy('proxy.js', initObj, ifaces.interfaces, false);
   }
   if(param.out.stub) {
-    buildStub(ifaces.service + 'Stub.js', initObj, ifaces.interfaces,
+    buildStub('stub.js', initObj, ifaces.interfaces,
         (remote == 'true' ? true : false));
   }
   if(remote == 'true' && param.out.proxy) {
     delete initObj.interface;
     delete initObj.serviceObj;
-    buildProxy(ifaces.service + 'ProxyRemote.js', initObj, ifaces.interfaces, true)
+    buildProxy('proxyremote.js', initObj, ifaces.interfaces, true)
   }
   if(param.out.index) {
-    buildIndex(initObj);
+    buildIndex('../index.js', ifaces.service, (remote == 'true'));
   }
 }
 exports.builder = builder;
@@ -102,7 +102,7 @@ var NOTICE = "// This file is auto generated based on user-defined interface.\n"
             + "// Please make sure that you have checked all TODOs in this file.\n"
             + "// TODO: please replace types with peramters' name you wanted of any functions\n"
             + "// TODO: please replace $ipcType with one of dbus, binder, websocket and socket\n";
-var GETIPC = "  // this._ipc = require('webde-rpc').getIPC(initObj);\n";
+var GETIPC = "   this._ipc = require('webde-rpc').getIPC(initObj);\n";
 
 function buildStub(filename, initObj, ifaces, remote) {
   var outputFile = [],
@@ -141,16 +141,17 @@ function buildStub(filename, initObj, ifaces, remote) {
         + (remote ? ",\n    cd = null;\n" : ";\n")
         + "exports.getStub = function(" + arg + ") {\n"
         + "  if(stub == null) {\n"
-        + (remote ? "    if(typeof proxyAddr === 'undefined')\n"
-        + "      throw 'The path of proxy\\'s module file we need!';\n"
-        + "    // TODO: replace $cdProxy to the path of commdaemonProxy\n"
-        + "    cd = require('$cdProxy').getProxy();\n"
-        + "    cd.register(initObj.name, proxyAddr, function(ret) {\n"
-        + "      if(ret.err) {\n"
-        + "        return console.log(ret.err\n"
-        + "          , 'This service cannot be accessed from other devices since failed to register on CD');\n"
-        + "      }\n"
-        + "    });\n" : "")
+        /* + (remote ? "    if(typeof proxyAddr === 'undefined')\n" */
+        // + "      throw 'The path of proxy\\'s module file we need!';\n"
+        // + "    // TODO: replace $cdProxy to the path of commdaemonProxy\n"
+        // // TODO: change to get service
+        // + "    cd = require('$cdProxy').getProxy();\n"
+        // + "    cd.register(initObj.name, proxyAddr, function(ret) {\n"
+        // + "      if(ret.err) {\n"
+        // + "        return console.log(ret.err\n"
+        // + "          , 'This service cannot be accessed from other devices since failed to register on CD');\n"
+        // + "      }\n"
+        /* + "    });\n" : "") */
         + "    stub = new Stub();\n"
         + "  }\n"
         + "  return stub;\n"
@@ -198,6 +199,12 @@ function buildProxy(filename, initObj, ifaces, remote) {
     if(!remote) {
       var initObjStr = JSON.stringify(initObj, null, 2);
       outputFile.push("var initObj = " + initObjStr + "\n");
+    } else {
+      outputFile.push("var __cd = undefined;\n"
+          + "require('webde-rpc').defaultSvcMgr().getService('commdaemon', function(ret) {\n"
+          + "  if(ret.err) return console.log(ret.err);\n"
+          + "  __cd = ret.ret;\n"
+          + "});\n");
     }
     var argus = (remote ? 'ip' : ''), 
         initS = (remote ? '  if(typeof ip !== \'undefined\') {\n'
@@ -208,8 +215,9 @@ function buildProxy(filename, initObj, ifaces, remote) {
     outputFile.push('function Proxy(' + argus +  ') {\n'
       + initS
       // the string to get ipc or cdProxy object
-      + (remote ? "  // TODO: replace $cdProxy to the real path\n"
-      + "  this._cd = require('$cdProxy').getProxy();" : GETIPC)
+      // + (remote ? "  // TODO: replace $cdProxy to the real path\n"
+      // + "  this._cd = require('$cdProxy').getProxy();\n" : GETIPC)
+      + (remote ? "" : GETIPC)
       + "  this._token = 0;\n\n"
       // the string to implement event handler user-own
       + (remote ? "" : EVENTHANDLER)
@@ -230,7 +238,7 @@ function buildProxy(filename, initObj, ifaces, remote) {
           + "      func: '" + ifaces[i].name + "',\n"
           + "      args: args\n"
           + "    };\n"
-          + "  this._cd.send(this.ip, argv, callback);\n") : ("  this._ipc.invoke({\n"
+          + "  __cd.send(this.ip, argv, callback);\n") : ("  this._ipc.invoke({\n"
           + "    token: this._token++,\n"
           + "    name: '" + ifaces[i].name + "',\n"
           + "    in: args,\n"
@@ -254,14 +262,14 @@ function buildProxy(filename, initObj, ifaces, remote) {
         + " */\n"
         + "Proxy.prototype.on = function(event, handler) {\n"
         // send on request to remote peer
-        + (remote ? ("  this._cd.on(event, handler);\n"
+        + (remote ? ("  __cd.on(event, handler);\n"
         + "  var argvs = {\n"
         + "    'action': 0,\n"
         + "    'svr': '" + initObj.name + "',\n"
         + "    'func': 'on',\n"
         + "    'args': [event]\n"
         + "  };\n"
-        + "  this._cd.send(this.ip, argvs);\n")
+        + "  __cd.send(this.ip, argvs);\n")
         : "  this._ipc.on(event, handler);\n")
         + "  return this;\n"
         + "};\n\n"
@@ -280,14 +288,14 @@ function buildProxy(filename, initObj, ifaces, remote) {
         + " */\n"
         + "Proxy.prototype.off = function(event, handler) {\n"
         // send off request to remote peer
-        + (remote ? ("  this._cd.off(event, handler);\n"
+        + (remote ? ("  __cd.off(event, handler);\n"
         + "  var argvs = {\n"
         + "    'action': 0,\n"
         + "    'svr': '" + initObj.name + "',\n"
         + "    'func': 'off',\n"
         + "    'args': [event]\n"
         + "  };\n"
-        + "  this._cd.send(this.ip, argvs);\n")
+        + "  __cd.send(this.ip, argvs);\n")
         : "  this._ipc.removeListener(event, handler);\n")
         + "  return this;\n"
         + "};\n");
@@ -310,7 +318,7 @@ function buildProxy(filename, initObj, ifaces, remote) {
 
 // build an index.js to initialize some events listened on parent's process(a.k.a svcmgr)
 //
-function buildIndex(initObj) {
+function buildIndex(filename, svcName, remote) {
   try {
     var outputFile = [];
     outputFile.push("// Main function of this service\n"
@@ -329,9 +337,10 @@ function buildIndex(initObj) {
         + "  });\n"
         + "} else {\n"
         + "  var svcmgr = require('webde-rpc').defaultSvcMgr();\n"
-        + "  svcmgr.addService(" + initObj.service + ", {\n"
+        + "  svcmgr.addService('" + svcName + "', {\n"
         + "    path: __dirname,\n"
-        + "    args: ['start']\n"
+        + "    args: ['start'],\n"
+        + (remote ? "    remote: true\n" : "remote: false\n")
         + "  }, function(ret) {\n"
         + "    if(ret.err) {\n"
         + "      console.log(ret.err);\n"
@@ -340,7 +349,7 @@ function buildIndex(initObj) {
         + "    process.exit(0);\n"
         + "  });\n"
         + "}\n");
-    fs.writeFile('../index.js', outputFile.join('\n'), function(err) {
+    fs.writeFile(filename, outputFile.join('\n'), function(err) {
       if(err) return err;
     });
   } catch(e) {
