@@ -326,14 +326,16 @@ function buildIndex(filename, svcName, remote) {
         + "  // TODO: your code to start up this service\n"
         + "  //   ... ...\n"
         + "}\n");
-    outputFile.push("// Do not modify codes below!!\n"
-        + "function parser(msg) {\n"
-        + "}\n");
+    outputFile.push("// Do not modify codes below!!\n");
     outputFile.push("if(process.argv[2] == 'start') {\n"
         + "  onStart();\n"
         + "  // initialize some event handler\n"
-        + "  process.on('message', function(msg) {\n"
-        + "    parser(msg);\n"
+        + "  process.on('SIGTERM', function() {\n"
+        + "    console.log('SIGTERM recived');\n"
+        + "    process.exit(0);\n"
+        + "  }).on('SIGINT', function() {\n"
+        + "    console.log('SIGINT recived');\n"
+        + "    process.exit(0);\n"
         + "  });\n"
         + "} else {\n"
         + "  var svcmgr = require('webde-rpc').defaultSvcMgr();\n"
