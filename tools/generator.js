@@ -63,7 +63,7 @@ function builder(ifaces) {
       initObj = {
         address: addr,
         path: path,
-        name: addr/*  + '.' + ifaces.service */,
+        name: path.replace(/\//g, '.').substr(1),
         type: '$ipcType'
       };
 
@@ -102,7 +102,7 @@ var NOTICE = "// This file is auto generated based on user-defined interface.\n"
             + "// Please make sure that you have checked all TODOs in this file.\n"
             + "// TODO: please replace types with peramters' name you wanted of any functions\n"
             + "// TODO: please replace $ipcType with one of dbus, binder, websocket and socket\n";
-var GETIPC = "   this._ipc = require('webde-rpc').getIPC(initObj);\n";
+var GETIPC = "  this._ipc = require('webde-rpc').getIPC(initObj);\n";
 
 function buildStub(filename, initObj, ifaces, remote) {
   var outputFile = [],
