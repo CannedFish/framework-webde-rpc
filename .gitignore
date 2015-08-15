@@ -5,5 +5,6 @@ Debug
 node_modules
 .deps
 .DS_Store
-.swp
+.*.swp
 *~
+test/generator-test/*/*.js
