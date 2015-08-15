@@ -342,7 +342,7 @@ function buildIndex(filename, svcName, remote) {
         + "  svcmgr.addService('" + svcName + "', {\n"
         + "    path: __dirname,\n"
         + "    args: ['start'],\n"
-        + (remote ? "    remote: true\n" : "remote: false\n")
+        + (remote ? "    remote: true\n" : "    remote: false\n")
         + "  }, function(ret) {\n"
         + "    if(ret.err) {\n"
         + "      console.log(ret.err);\n"
