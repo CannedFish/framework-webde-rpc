@@ -2,24 +2,26 @@
 function onStart() {
   // TODO: your code to start up this service
   //   ... ...
-
 }
 
 // Do not modify codes below!!
-function parser(msg) {
-}
 
 if(process.argv[2] == 'start') {
   onStart();
   // initialize some event handler
-  process.on('message', function(msg) {
-    parser(msg);
+  process.on('SIGTERM', function() {
+    console.log('SIGTERM recived');
+    process.exit(0);
+  }).on('SIGINT', function() {
+    console.log('SIGINT recived');
+    process.exit(0);
   });
 } else {
   var svcmgr = require('webde-rpc').defaultSvcMgr();
-  svcmgr.addService(false, {
+  svcmgr.addService('nodejs.webde.test', {
     path: __dirname,
-    args: ['start']
+    args: ['start'],
+    remote: true
   }, function(ret) {
     if(ret.err) {
       console.log(ret.err);

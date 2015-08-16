@@ -93,7 +93,7 @@ function builder(ifaces) {
     buildProxy('proxyremote.js', initObj, ifaces.interfaces, true)
   }
   if(param.out.index) {
-    buildIndex('../index.js', ifaces.service, (remote == 'true'));
+    buildIndex('../index.js', addr, (remote == 'true'));
   }
 }
 exports.builder = builder;
@@ -200,11 +200,34 @@ function buildProxy(filename, initObj, ifaces, remote) {
       var initObjStr = JSON.stringify(initObj, null, 2);
       outputFile.push("var initObj = " + initObjStr + "\n");
     } else {
-      outputFile.push("var __cd = undefined;\n"
-          + "require('webde-rpc').defaultSvcMgr().getService('commdaemon', function(ret) {\n"
+      outputFile.push("var __cd = undefined,\n"
+          + "    init = false,\n"
+          + "    pending = [];\n"
+          + "require('webde-rpc').defaultSvcMgr().getService('nodejs.webde.commdaemon', function(ret) {\n"
           + "  if(ret.err) return console.log(ret.err);\n"
           + "  __cd = ret.ret;\n"
+          + "  init = true;\n"
+          + "  __emit();\n"
           + "});\n");
+      outputFile.push("function __emit() {\n"
+          + "  for(var key in pending) {\n"
+          + "    for(var i = 0; i < pending[key].length; ++i) {\n"
+          + "      var p = pending[key][i];\n"
+          + "      clearTimeout(p[1]);\n"
+          + "      proxy[key].apply(proxy, p[0]);\n"
+          + "    }\n"
+          + "  }\n"
+          + "  pending = [];\n"
+          + "}\n");
+      outputFile.push("function __pend(fn, args, cb) {\n"
+          + "  if(typeof pending[fn] === 'undefined') {\n"
+          + "    pending[fn] = [];\n"
+          + "  }\n"
+          + "  var to = setTimeout(function() {\n"
+          + "    cb({err: 'Can\\'t get commdaemon service'});\n"
+          + "  }, 5000);\n"
+          + "  pending[fn].push([args, to]);\n"
+          + "}\n")
     }
     var argus = (remote ? 'ip' : ''), 
         initS = (remote ? '  if(typeof ip !== \'undefined\') {\n'
@@ -229,6 +252,10 @@ function buildProxy(filename, initObj, ifaces, remote) {
           + "Proxy.prototype." + ifaces[i].name + " = function(" 
           + ifaces[i].in.join(', ')
           + (ifaces[i].in.length == 0 ? "" : ", ") + "callback) {\n"
+          + (remote ? ("  if(!init) {\n"
+          + "    __pend('" + ifaces[i].name + "', arguments, callback);\n"
+          + "    return ;\n"
+          + "  }\n") : "")
           + "  var l = arguments.length,\n"
           + "      args = Array.prototype.slice.call(arguments, 0"
           + ", (typeof callback === 'undefined' ? l : l - 1));\n"
@@ -262,7 +289,11 @@ function buildProxy(filename, initObj, ifaces, remote) {
         + " */\n"
         + "Proxy.prototype.on = function(event, handler) {\n"
         // send on request to remote peer
-        + (remote ? ("  __cd.on(event, handler);\n"
+        + (remote ? ("  if(!init) {\n"
+        + "    __pend('on', arguments, function(){});\n"
+        + "    return ;\n"
+        + "  }"
+        + "  __cd.on(event, handler);\n"
         + "  var argvs = {\n"
         + "    'action': 0,\n"
         + "    'svr': '" + initObj.name + "',\n"
@@ -288,7 +319,11 @@ function buildProxy(filename, initObj, ifaces, remote) {
         + " */\n"
         + "Proxy.prototype.off = function(event, handler) {\n"
         // send off request to remote peer
-        + (remote ? ("  __cd.off(event, handler);\n"
+        + (remote ? ("  if(!init) {\n"
+        + "    __pend('off', arguments, function(){});\n"
+        + "    return ;\n"
+        + "  }"
+        + "  __cd.off(event, handler);\n"
         + "  var argvs = {\n"
         + "    'action': 0,\n"
         + "    'svr': '" + initObj.name + "',\n"
