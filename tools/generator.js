@@ -141,17 +141,6 @@ function buildStub(filename, initObj, ifaces, remote) {
         + (remote ? ",\n    cd = null;\n" : ";\n")
         + "exports.getStub = function(" + arg + ") {\n"
         + "  if(stub == null) {\n"
-        /* + (remote ? "    if(typeof proxyAddr === 'undefined')\n" */
-        // + "      throw 'The path of proxy\\'s module file we need!';\n"
-        // + "    // TODO: replace $cdProxy to the path of commdaemonProxy\n"
-        // // TODO: change to get service
-        // + "    cd = require('$cdProxy').getProxy();\n"
-        // + "    cd.register(initObj.name, proxyAddr, function(ret) {\n"
-        // + "      if(ret.err) {\n"
-        // + "        return console.log(ret.err\n"
-        // + "          , 'This service cannot be accessed from other devices since failed to register on CD');\n"
-        // + "      }\n"
-        /* + "    });\n" : "") */
         + "    stub = new Stub();\n"
         + "  }\n"
         + "  return stub;\n"
